@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archie's Navigator - Maritime Route Planner</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        /* Custom styles inspired by Archie's main interface */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); /* Dark gradient background */
+            color: #f8fafc; /* Light text color */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .container {
+            max-width: 900px; /* Wider container for the map */
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        .card {
+            background: rgba(30, 41, 59, 0.8); /* Semi-transparent dark background */
+            border: 1px solid #334155; /* Subtle border */
+            border-radius: 0.75rem; /* Rounded corners */
+            padding: 2rem;
+            backdrop-filter: blur(10px); /* Glassmorphism effect */
+            transition: border-color 0.3s ease;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); /* Soft shadow */
+        }
+        .card:hover {
+            border-color: #2A9D8F; /* Highlight border on hover */
+        }
+        .input-field {
+            background-color: #1e293b;
+            border: 1px solid #475569;
+            color: #f8fafc;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            transition: border-color 0.3s ease;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #2A9D8F;
+            box-shadow: 0 0 0 2px rgba(42, 157, 143, 0.3);
+        }
+        .button {
+            background: #2A9D8F; /* Primary brand color */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: background 0.3s ease, transform 0.1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-weight: 600;
+        }
+        .button:hover {
+            background: #238b7a; /* Slightly darker on hover */
+            transform: translateY(-1px);
+        }
+        .button:active {
+            transform: translateY(0);
+        }
+        .icon-teal { color: #2A9D8F; } /* Archie's main color */
+        .icon-yellow { color: #E9C46A; } /* Archie's accent color */
+        .icon-blue { color: #3b82f6; } /* Info color */
+
+        /* Map specific styles */
+        #route-map {
+            width: 100%;
+            height: 300px;
+            background: url('https://placehold.co/800x300/1e293b/64748b?text=Simulated+Ocean+Map') no-repeat center center / cover;
+            border-radius: 0.5rem;
+            margin-top: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .route-line {
+            position: absolute;
+            height: 4px;
+            background-color: #E9C46A; /* Warm Gold for the route */
+            border-radius: 2px;
+            transition: all 1s ease-out; /* Smooth animation for route */
+        }
+        .marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: white;
+            z-index: 10;
+            transform: translate(-50%, -50%); /* Center marker */
+        }
+        .marker-start { background-color: #2A9D8F; } /* Teal for start */
+        .marker-end { background-color: #E76F51; } /* Sunset Red for end */
+
+        /* Archie Chat/Briefing section */
+        #archie-briefing {
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid #2A9D8F;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        .archie-avatar-small {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 50%;
+            background: #E9C46A;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            border: 2px solid #F4A261;
+            position: absolute;
+            top: -1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: float 3s ease-in-out infinite; /* Inherit float animation */
+            z-index: 5;
+        }
+
+        /* Animations from Archie's original page */
+        @keyframes float {
+            0%, 100% { transform: translate(-50%, 0px); }
+            50% { transform: translate(-50%, -10px); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1 class="text-3xl font-bold text-center text-teal-300 mb-6">
+                <i data-lucide="compass" class="inline-block mr-2 icon-teal" style="width: 2rem; height: 2rem;"></i>
+                Archie's Navigator
+            </h1>
+            <p class="text-center text-gray-400 mb-8">Your trusted maritime route planning and briefing tool.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label for="departure" class="block text-gray-300 text-sm font-medium mb-2">Departure Location</label>
+                    <input type="text" id="departure" class="w-full input-field" placeholder="e.g., Anderson Lighthouse, CA">
+                </div>
+                <div>
+                    <label for="destination" class="block text-gray-300 text-sm font-medium mb-2">Destination</label>
+                    <input type="text" id="destination" class="w-full input-field" placeholder="e.g., Catalina Island, CA">
+                </div>
+            </div>
+
+            <button id="get-briefing-button" class="button w-full mb-6">
+                <i data-lucide="sailboat" style="width: 1.25rem; height: 1.25rem;"></i>
+                Get Navigational Briefing
+            </button>
+
+            <div id="route-map">
+                <!-- Map markers and route lines will be dynamically added here -->
+                <div id="start-marker" class="marker marker-start hidden">S</div>
+                <div id="end-marker" class="marker marker-end hidden">E</div>
+                <div id="route-line-segment" class="route-line hidden"></div>
+            </div>
+
+            <div id="archie-briefing" class="relative mt-10 p-8 pt-10">
+                <div class="archie-avatar-small">🦆</div>
+                <h3 class="text-xl font-semibold text-teal-300 mb-3 text-center">Archie's Navigational Brief</h3>
+                <div id="briefing-content" class="text-gray-300 leading-relaxed text-center">
+                    Enter your departure and destination to receive a detailed brief from Archie!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        document.getElementById('get-briefing-button').addEventListener('click', generateNavigationalBriefing);
+
+        function generateNavigationalBriefing() {
+            const departure = document.getElementById('departure').value.trim();
+            const destination = document.getElementById('destination').value.trim();
+            const briefingContent = document.getElementById('briefing-content');
+            const routeMap = document.getElementById('route-map');
+            const startMarker = document.getElementById('start-marker');
+            const endMarker = document.getElementById('end-marker');
+            const routeLineSegment = document.getElementById('route-line-segment');
+
+            if (!departure || !destination) {
+                briefingContent.innerHTML = `
+                    <p class="text-red-400">Please enter both departure and destination locations.</p>
+                `;
+                // Hide markers and route if inputs are empty
+                startMarker.classList.add('hidden');
+                endMarker.classList.add('hidden');
+                routeLineSegment.classList.add('hidden');
+                return;
+            }
+
+            // Simulate coordinates for markers (relative to map div)
+            const mapWidth = routeMap.offsetWidth;
+            const mapHeight = routeMap.offsetHeight;
+
+            // Randomize start and end points slightly for variety
+            const startX = Math.random() * (mapWidth * 0.2) + (mapWidth * 0.1);
+            const startY = Math.random() * (mapHeight * 0.2) + (mapHeight * 0.1);
+            const endX = Math.random() * (mapWidth * 0.2) + (mapWidth * 0.7);
+            const endY = Math.random() * (mapHeight * 0.2) + (mapHeight * 0.7);
+
+            // Update marker positions
+            startMarker.style.left = `${startX}px`;
+            startMarker.style.top = `${startY}px`;
+            startMarker.classList.remove('hidden');
+
+            endMarker.style.left = `${endX}px`;
+            endMarker.style.top = `${endY}px`;
+            endMarker.classList.remove('hidden');
+
+            // Draw and animate the route line
+            const deltaX = endX - startX;
+            const deltaY = endY - startY;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
+
+            routeLineSegment.style.width = `${distance}px`;
+            routeLineSegment.style.left = `${startX}px`;
+            routeLineSegment.style.top = `${startY}px`;
+            routeLineSegment.style.transformOrigin = '0 0'; /* Rotate from start point */
+            routeLineSegment.style.transform = `rotate(${angle}deg)`;
+            routeLineSegment.classList.remove('hidden');
+
+            // --- Simulate Briefing Content ---
+            const conditions = ['clear', 'light fog', 'choppy waters', 'moderate winds', 'heavy vessel traffic'];
+            const hazards = ['no significant hazards', 'potential for small craft', 'fishing vessel activity', 'unmarked buoy (simulated)'];
+            const advice = [
+                "Fair winds and calm seas are expected. Enjoy your journey!",
+                "Keep a sharp lookout for other vessels, traffic is moderate.",
+                "Light chop expected, secure loose items. Navigate with caution near shore.",
+                "Weather appears stable, but always monitor for sudden changes. Archie is here to help!",
+                "Currents are favorable, you should make good time. Have a safe passage."
+            ];
+
+            const randomCondition = conditions[Math.floor(Math.random() * conditions.length)];
+            const randomHazard = hazards[Math.floor(Math.random() * hazards.length)];
+            const randomAdvice = advice[Math.floor(Math.random() * advice.length)];
+
+            const travelTimeHours = (distance / 100) * (Math.random() * 0.5 + 1); // Simulate time based on distance
+            const travelTimeMinutes = Math.round((travelTimeHours - Math.floor(travelTimeHours)) * 60);
+
+            briefingContent.innerHTML = `
+                <p><i data-lucide="map-pin" class="inline-block icon-teal"></i> Route from <strong>${departure}</strong> to <strong>${destination}</strong>:</p>
+                <p class="mt-2"><i data-lucide="cloud-sun" class="inline-block icon-blue"></i> Current Conditions: <span class="font-semibold">${randomCondition}</span></p>
+                <p><i data-lucide="alert-triangle" class="inline-block icon-yellow"></i> Navigational Hazards: <span class="font-semibold">${randomHazard}</span></p>
+                <p><i data-lucide="clock" class="inline-block icon-yellow"></i> Estimated Travel Time: <span class="font-semibold">${Math.floor(travelTimeHours)}h ${travelTimeMinutes}m</span></p>
+                <p class="mt-4 text-center"><strong>Archie Says:</strong> "${randomAdvice}"</p>
+            `;
+
+            // Re-create Lucide icons after updating innerHTML
+            lucide.createIcons();
+        }
+
+        // Adjust map markers on window resize (simple responsiveness)
+        window.addEventListener('resize', () => {
+            const departure = document.getElementById('departure').value.trim();
+            const destination = document.getElementById('destination').value.trim();
+            if (departure && destination) { // Only re-draw if a route was already generated
+                generateNavigationalBriefing();
+            }
+        });
+
+    </script>
+</body>
+</html>
